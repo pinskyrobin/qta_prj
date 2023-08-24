@@ -29,14 +29,14 @@ class Trainer:
         self.train_loader = train_loader
         self.test_loader = test_loader
         self.epochs = epochs
+        self.train_acc_list = []
+        self.test_acc_list = []
+        self.train_loss_list = []
+        self.test_loss_list = []
 
     def train(self):
 
         prev_loss = float('inf')
-        es_cnt = 0
-
-        train_acc_list = []
-        test_acc_list = []
 
         for epoch in range(self.epochs):
             print(f'[Epoch {epoch + 1}/{self.epochs}]')
@@ -47,7 +47,7 @@ class Trainer:
 
             progbar = Progbar(len(self.train_loader.dataset))
 
-            for batch_idx, (data, target) in enumerate(self.train_loader):
+            for _, (data, target) in enumerate(self.train_loader):
                 data = data.to(self.device)
                 target = target.to(self.device)
 
@@ -86,21 +86,14 @@ class Trainer:
             test_accuracy = 100. * test_correct / len(self.test_loader.dataset)
             print(f'Test Loss: {test_loss:.6f}, Test Accuracy: {test_accuracy:.2f}%')
 
-            # early stop if loss dose not decrease for 10 epochs
-            if test_loss > prev_loss:
-                es_cnt += 1
-                if es_cnt == 10:
-                    print('Early stop.')
-                    break
-            else:
-                es_cnt = 0
-
-            prev_loss = test_loss
+            if test_loss < prev_loss:
+                prev_loss = test_loss
+                torch.save(self.model.state_dict(), 'model.pt')
             
-            train_acc_list.append(train_accuracy)
-            test_acc_list.append(test_accuracy)
+            self.train_acc_list.append(train_accuracy)
+            self.test_acc_list.append(test_accuracy)
+            self.train_loss_list.append(train_loss)
+            self.test_loss_list.append(test_loss)
             
             if self.scheduler is not None:
                 self.scheduler.step()
-    
-        return train_acc_list, test_acc_list
